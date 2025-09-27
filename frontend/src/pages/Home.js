@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useImages } from '../contexts/ImageContext';
 import { Camera, Upload, GalleryHorizontal, Shield, Users, Clock, CheckCircle, Search, Bell, User } from 'lucide-react';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 const Home = () => {
   const { images, fetchImages } = useImages();
@@ -135,11 +136,11 @@ const Home = () => {
                 whileHover={{ y: -8, scale: 1.02 }}
                 className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group"
               >
-                <div className="aspect-square overflow-hidden">
-                  <img
-                    src={`http://localhost:5000/uploads/${image.filename}`}
+                <div className="aspect-square overflow-hidden bg-gray-100">
+                  <ImageWithFallback
+                    filename={image.filename}
                     alt={image.caption}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
                   />
                 </div>
                 <div className="p-5">
@@ -184,11 +185,11 @@ const Home = () => {
                 whileHover={{ y: -8, scale: 1.02 }}
                 className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group"
               >
-                <div className="aspect-square overflow-hidden">
-                  <img
-                    src={`http://localhost:5000/uploads/${image.filename}`}
+                <div className="aspect-square overflow-hidden bg-gray-100">
+                  <ImageWithFallback
+                    filename={image.filename}
                     alt={image.caption}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
                   />
                 </div>
                 <div className="p-5">

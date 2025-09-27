@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useRef } from 'react';
 import axios from 'axios';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 const ImageContext = createContext();
 
 export const useImages = () => {
@@ -26,9 +28,9 @@ export const ImageProvider = ({ children }) => {
   const uploadImage = async (formData) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken');
       
-      const response = await axios.post('/api/images/upload', formData, {
+      const response = await axios.post(`${API_BASE_URL}/images/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
@@ -66,8 +68,8 @@ export const ImageProvider = ({ children }) => {
             ...(search && { search })
           });
 
-          const token = localStorage.getItem('token');
-          const response = await axios.get(`/api/images?${params}`, {
+          const token = localStorage.getItem('adminToken');
+          const response = await axios.get(`${API_BASE_URL}/images?${params}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -98,8 +100,8 @@ export const ImageProvider = ({ children }) => {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/images/stats/summary', {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get(`${API_BASE_URL}/images/stats/summary`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -116,8 +118,8 @@ export const ImageProvider = ({ children }) => {
 
   const approveImage = async (imageId, action, rejectionReason = '') => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.patch(`/api/admin/images/${imageId}/approve`, {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.patch(`${API_BASE_URL}/admin/images/${imageId}/approve`, {
         action,
         rejection_reason: rejectionReason
       }, {
@@ -147,7 +149,7 @@ export const ImageProvider = ({ children }) => {
 
   const bulkApprove = async (imageIds, action, rejectionReason = '') => {
     try {
-      const response = await axios.patch('/api/admin/images/bulk', {
+      const response = await axios.patch(`${API_BASE_URL}/admin/images/bulk`, {
         image_ids: imageIds,
         action,
         rejection_reason: rejectionReason
@@ -173,8 +175,8 @@ export const ImageProvider = ({ children }) => {
 
   const deleteImage = async (imageId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.delete(`/api/admin/images/${imageId}`, {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.delete(`${API_BASE_URL}/admin/images/${imageId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

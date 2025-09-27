@@ -38,7 +38,8 @@ router.post('/create', requireAdmin, [
   body('description').optional().isLength({ max: 1000 }).withMessage('Description must be less than 1000 characters'),
   body('instructions').optional().isLength({ max: 2000 }).withMessage('Instructions must be less than 2000 characters'),
   body('due_date').optional().isISO8601().withMessage('Due date must be a valid date'),
-  body('max_images').optional().isInt({ min: 1, max: 10 }).withMessage('Max images must be between 1 and 10')
+  body('max_images').optional().isInt({ min: 1, max: 10 }).withMessage('Max images must be between 1 and 10'),
+  body('compress_images').optional().isBoolean().withMessage('Compress images must be a boolean value')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -50,12 +51,12 @@ router.post('/create', requireAdmin, [
       });
     }
 
-    const { title, description, instructions, due_date, max_images } = req.body;
+    const { title, description, instructions, due_date, max_images, compress_images } = req.body;
 
     const [result] = await pool.execute(
-      `INSERT INTO assignments (title, description, instructions, due_date, max_images, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [title, description || null, instructions || null, due_date || null, max_images || 1, req.user.id]
+      `INSERT INTO assignments (title, description, instructions, due_date, max_images, compress_images, created_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [title, description || null, instructions || null, due_date || null, max_images || 1, compress_images !== false, req.user.id]
     );
 
     res.status(201).json({
@@ -146,6 +147,7 @@ router.put('/:id', requireAdmin, [
   body('instructions').optional().isLength({ max: 2000 }).withMessage('Instructions must be less than 2000 characters'),
   body('due_date').optional().isISO8601().withMessage('Due date must be a valid date'),
   body('max_images').optional().isInt({ min: 1, max: 10 }).withMessage('Max images must be between 1 and 10'),
+  body('compress_images').optional().isBoolean().withMessage('Compress images must be a boolean value'),
   body('is_active').optional().isBoolean().withMessage('is_active must be a boolean')
 ], async (req, res) => {
   try {
@@ -159,7 +161,7 @@ router.put('/:id', requireAdmin, [
     }
 
     const { id } = req.params;
-    const { title, description, instructions, due_date, max_images, is_active } = req.body;
+    const { title, description, instructions, due_date, max_images, compress_images, is_active } = req.body;
 
     // Check if assignment exists
     const [existingAssignments] = await pool.execute(
@@ -197,6 +199,10 @@ router.put('/:id', requireAdmin, [
     if (max_images !== undefined) {
       updateFields.push('max_images = ?');
       updateValues.push(max_images);
+    }
+    if (compress_images !== undefined) {
+      updateFields.push('compress_images = ?');
+      updateValues.push(compress_images);
     }
     if (is_active !== undefined) {
       updateFields.push('is_active = ?');

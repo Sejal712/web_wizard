@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const sharp = require('sharp');
 const { body, validationResult, query } = require('express-validator');
 const { pool } = require('../config/database');
 const { authenticateToken, requireStudent, requireAdmin } = require('./auth');
@@ -10,19 +11,12 @@ const router = express.Router();
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../uploads');
+const compressedDir = path.join(__dirname, '../uploads/compressed');
 fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
+fs.mkdir(compressedDir, { recursive: true }).catch(console.error);
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `image-${uniqueSuffix}${ext}`);
-  }
-});
+// Configure multer for memory storage (for Sharp processing)
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -81,9 +75,10 @@ router.post('/upload', authenticateToken, requireStudent, upload.single('image')
     }
 
     // If assignment_id is provided, validate it
+    let assignment = null;
     if (assignment_id) {
       const [assignments] = await pool.execute(
-        'SELECT id, max_images, due_date FROM assignments WHERE id = ? AND is_active = TRUE',
+        'SELECT id, max_images, due_date, compress_images FROM assignments WHERE id = ? AND is_active = TRUE',
         [assignment_id]
       );
 
@@ -94,7 +89,7 @@ router.post('/upload', authenticateToken, requireStudent, upload.single('image')
         });
       }
 
-      const assignment = assignments[0];
+      assignment = assignments[0];
 
       // Check if due date has passed
       if (assignment.due_date && new Date(assignment.due_date) < new Date()) {
@@ -118,19 +113,58 @@ router.post('/upload', authenticateToken, requireStudent, upload.single('image')
       }
     }
 
-    // Save to database
+    // Process image with Sharp based on assignment compression setting
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const originalExt = path.extname(req.file.originalname).toLowerCase();
+    let processedFilename, processedPath;
+    
+    // Check if assignment requires compression (default to true if no assignment)
+    const shouldCompress = assignment ? assignment.compress_images : true;
+    
+    if (shouldCompress) {
+      // Compressed version
+      processedFilename = `image-${uniqueSuffix}.jpg`;
+      processedPath = path.join(compressedDir, processedFilename);
+      
+      // Process image: resize, compress, and convert to JPEG
+      await sharp(req.file.buffer)
+        .resize({ 
+          width: 1200, 
+          height: 1200, 
+          fit: 'inside',
+          withoutEnlargement: true 
+        })
+        .jpeg({ 
+          quality: 75,
+          progressive: true,
+          mozjpeg: true
+        })
+        .toFile(processedPath);
+
+      console.log(`Image compressed successfully: ${processedFilename}`);
+    } else {
+      // Original quality version
+      processedFilename = `image-${uniqueSuffix}${originalExt}`;
+      processedPath = path.join(uploadsDir, processedFilename);
+      
+      // Save original file without compression
+      await fs.writeFile(processedPath, req.file.buffer);
+      console.log(`Original image saved: ${processedFilename}`);
+    }
+
+    // Save to database with processed filename
     const [result] = await pool.execute(
       `INSERT INTO images (filename, original_name, caption, uploader_name, roll_number, status, assignment_id) 
        VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
-      [req.file.filename, req.file.originalname, caption, uploader_name, roll_number, assignment_id || null]
+      [processedFilename, req.file.originalname, caption, uploader_name, roll_number, assignment_id || null]
     );
 
     res.status(201).json({
       success: true,
-      message: 'Image uploaded successfully and is pending approval',
+      message: 'Image uploaded and processed successfully - pending approval',
       image: {
         id: result.insertId,
-        filename: req.file.filename,
+        filename: processedFilename,
         caption,
         uploader_name,
         roll_number,
@@ -142,12 +176,12 @@ router.post('/upload', authenticateToken, requireStudent, upload.single('image')
   } catch (error) {
     console.error('Upload error:', error);
     
-    // Clean up uploaded file if database insert failed
-    if (req.file) {
+    // Clean up processed file if database insert failed
+    if (processedFilename) {
       try {
-        await fs.unlink(req.file.path);
+        await fs.unlink(path.join(compressedDir, processedFilename));
       } catch (unlinkError) {
-        console.error('Failed to delete uploaded file:', unlinkError);
+        console.error('Failed to delete processed file:', unlinkError);
       }
     }
 

@@ -73,6 +73,7 @@ const initDatabase = async () => {
         instructions TEXT,
         due_date DATETIME NULL,
         max_images INT DEFAULT 1,
+        compress_images BOOLEAN DEFAULT TRUE,
         is_active BOOLEAN DEFAULT TRUE,
         created_by INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -90,6 +91,12 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS assignment_id INT NULL,
       ADD FOREIGN KEY IF NOT EXISTS fk_assignment (assignment_id) REFERENCES assignments(id) ON DELETE SET NULL,
       ADD INDEX IF NOT EXISTS idx_assignment_id (assignment_id)
+    `);
+
+    // Add compress_images column to assignments table
+    await promisePool.execute(`
+      ALTER TABLE assignments 
+      ADD COLUMN IF NOT EXISTS compress_images BOOLEAN DEFAULT TRUE
     `);
 
     // Insert default admin if not exists

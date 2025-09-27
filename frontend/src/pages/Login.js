@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -22,7 +24,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,7 +36,7 @@ const Login = () => {
 
       if (data.success) {
         // Store token and user data
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('adminToken', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
         toast.success('Login successful!');

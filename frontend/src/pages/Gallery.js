@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Bell, User, Camera, X, ChevronDown, FileText } from 'lucide-react';
 import { useImages } from '../contexts/ImageContext';
+import ImageWithFallback from '../components/ImageWithFallback';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const Gallery = () => {
   const { images, fetchImages } = useImages();
@@ -18,7 +21,7 @@ const Gallery = () => {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch('/api/assignments/public');
+      const response = await fetch(`${API_BASE_URL}/assignments/public`);
       const data = await response.json();
       if (data.success) {
         setAssignments(data.assignments);
@@ -138,12 +141,12 @@ const Gallery = () => {
                 onClick={() => setSelectedImage(image)}
               >
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
-                  <div className="aspect-square overflow-hidden relative">
-                    <img
-                      src={`http://localhost:5000/uploads/${image.filename}`}
-                      alt={image.caption}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                          <div className="aspect-square overflow-hidden relative bg-gray-100">
+                            <ImageWithFallback
+                              filename={image.filename}
+                              alt={image.caption}
+                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                            />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <div className="bg-white rounded-full p-3 shadow-lg">
@@ -210,11 +213,11 @@ const Gallery = () => {
                 >
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
-                <img
-                  src={`http://localhost:5000/uploads/${selectedImage.filename}`}
-                  alt={selectedImage.caption}
-                  className="w-full max-h-[60vh] object-contain"
-                />
+                        <ImageWithFallback
+                          filename={selectedImage.filename}
+                          alt={selectedImage.caption}
+                          className="w-full max-h-[60vh] object-contain"
+                        />
               </div>
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedImage.caption}</h2>

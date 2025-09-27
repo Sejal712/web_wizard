@@ -5,6 +5,9 @@ import {
   Users, Image, Clock, CheckCircle, XCircle, Plus, Edit, Trash2, Eye,
   LogOut, Menu, X, Home, BookOpen, Camera, BarChart3, UserPlus, FileText
 } from 'lucide-react';
+import ImageWithFallback from '../components/ImageWithFallback';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -21,7 +24,8 @@ const AdminDashboard = () => {
     description: '',
     instructions: '',
     due_date: '',
-    max_images: 1
+    max_images: 1,
+    compress_images: true
   });
 
   useEffect(() => {
@@ -41,24 +45,22 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken');
       
       // Fetch stats
-      const statsResponse = await fetch('/api/admin/stats', {
+      const statsResponse = await fetch(`${API_BASE_URL}/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const statsData = await statsResponse.json();
       if (statsData.success) setStats(statsData.stats);
 
       // Fetch assignments
-      const assignmentsResponse = await fetch('/api/assignments', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const assignmentsResponse = await fetch(`${API_BASE_URL}/assignments/public`);
       const assignmentsData = await assignmentsResponse.json();
       if (assignmentsData.success) setAssignments(assignmentsData.assignments);
 
       // Fetch images (all statuses for admin)
-      const imagesResponse = await fetch('/api/images?status=all', {
+      const imagesResponse = await fetch(`${API_BASE_URL}/images?status=all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const imagesData = await imagesResponse.json();
@@ -74,8 +76,8 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/users', {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -88,8 +90,8 @@ const AdminDashboard = () => {
 
   const fetchAssignments = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/assignments', {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE_URL}/assignments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -104,8 +106,8 @@ const AdminDashboard = () => {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/assignments', {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE_URL}/assignments/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,8 +140,8 @@ const AdminDashboard = () => {
 
   const handleApproveImage = async (imageId, action) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/images/${imageId}/approve`, {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE_URL}/admin/images/${imageId}/approve`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +205,7 @@ const AdminDashboard = () => {
             </button>
           </div>
         </div>
-
+        
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           <button
@@ -241,7 +243,7 @@ const AdminDashboard = () => {
             <BookOpen className="w-5 h-5" />
             {sidebarOpen && <span>Assignments</span>}
           </button>
-
+          
           <button
             onClick={() => setActiveTab('images')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
@@ -285,8 +287,8 @@ const AdminDashboard = () => {
                   {activeTab === 'students' && 'Manage student accounts and information'}
                   {activeTab === 'assignments' && 'Create and manage assignments'}
                   {activeTab === 'images' && 'Review and manage image submissions'}
-                </p>
-              </div>
+          </p>
+        </div>
             </div>
           </div>
         </header>
@@ -312,8 +314,8 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </div>
-                </div>
-
+              </div>
+              
                 <div className="bg-white overflow-hidden shadow rounded-lg">
                   <div className="p-5">
                     <div className="flex items-center">
@@ -329,7 +331,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
-
+                
                 <div className="bg-white overflow-hidden shadow rounded-lg">
                   <div className="p-5">
                     <div className="flex items-center">
@@ -371,11 +373,11 @@ const AdminDashboard = () => {
                     {images.slice(0, 5).map((image) => (
                       <div key={image.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-3">
-                          <img
-                            src={`http://localhost:5000/uploads/${image.filename}`}
-                            alt={image.caption}
-                            className="w-12 h-12 object-cover rounded"
-                          />
+                                <ImageWithFallback
+                                  filename={image.filename}
+                                  alt={image.caption}
+                                  className="w-12 h-12 object-contain rounded"
+                                />
                           <div>
                             <p className="text-sm font-medium text-gray-900">{image.caption}</p>
                             <p className="text-xs text-gray-500">by {image.uploader_name}</p>
@@ -393,8 +395,8 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+                  </div>
+                )}
 
           {/* Students Tab */}
           {activeTab === 'students' && (
@@ -441,13 +443,23 @@ const AdminDashboard = () => {
               <div className="flex justify-between items-center">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">Assignment Management</h3>
                 <button
-                  onClick={() => setShowCreateAssignment(true)}
+                  onClick={() => {
+                    setShowCreateAssignment(true);
+                    setAssignmentForm({
+                      title: '',
+                      description: '',
+                      instructions: '',
+                      due_date: '',
+                      max_images: 1,
+                      compress_images: true
+                    });
+                  }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Assignment</span>
                 </button>
-              </div>
+        </div>
 
               {/* Create Assignment Modal */}
               {showCreateAssignment && (
@@ -503,6 +515,21 @@ const AdminDashboard = () => {
                           className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Image Compression</label>
+                        <select
+                          value={assignmentForm.compress_images ? 'true' : 'false'}
+                          onChange={(e) => setAssignmentForm({...assignmentForm, compress_images: e.target.value === 'true'})}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        >
+                          <option value="true">Compress Images (Recommended - Smaller file size)</option>
+                          <option value="false">Original Quality (Larger file size)</option>
+                        </select>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Compressed: Images resized to max 1200px and optimized for web. 
+                          Original: Full resolution images preserved.
+                        </p>
+                      </div>
                       <div className="flex justify-end space-x-3">
                         <button
                           type="button"
@@ -537,6 +564,11 @@ const AdminDashboard = () => {
                               <span>Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'No due date'}</span>
                               <span>Max Images: {assignment.max_images}</span>
                               <span className={`px-2 py-1 rounded-full ${
+                                assignment.compress_images ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                              }`}>
+                                {assignment.compress_images ? 'Compressed' : 'Original Quality'}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full ${
                                 assignment.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                               }`}>
                                 {assignment.is_active ? 'Active' : 'Inactive'}
@@ -569,11 +601,11 @@ const AdminDashboard = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {images.map((image) => (
-                    <div key={image.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                      <img
-                        src={`http://localhost:5000/uploads/${image.filename}`}
+                    <div key={image.id} className="border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
+                      <ImageWithFallback
+                        filename={image.filename}
                         alt={image.caption}
-                        className="w-full h-48 object-cover"
+                        className="w-full h-48 object-contain"
                       />
                       <div className="p-4">
                         <h4 className="text-sm font-medium text-gray-900 truncate">{image.caption}</h4>
@@ -596,20 +628,20 @@ const AdminDashboard = () => {
                         {/* Action buttons for pending images */}
                         {image.status === 'pending' && (
                           <div className="mt-3 flex space-x-2">
-                            <button
+              <button
                               onClick={() => handleApproveImage(image.id, 'approve')}
                               className="flex-1 bg-green-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-green-700 transition-colors"
                             >
                               ✓ Approve
-                            </button>
-                            <button
+              </button>
+            <button
                               onClick={() => handleApproveImage(image.id, 'reject')}
                               className="flex-1 bg-red-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-700 transition-colors"
-                            >
+            >
                               ✗ Reject
-                            </button>
-                          </div>
-                        )}
+            </button>
+          </div>
+        )}
 
                         {/* Show approval info for approved/rejected images */}
                         {image.status !== 'pending' && image.approved_by && (
