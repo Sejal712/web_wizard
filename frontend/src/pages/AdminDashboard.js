@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Users, Image, Clock, CheckCircle, XCircle, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { 
+  Users, Image, Clock, CheckCircle, XCircle, Plus, Edit, Trash2, Eye,
+  LogOut, Menu, X, Home, BookOpen, Camera, BarChart3, UserPlus, FileText
+} from 'lucide-react';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [stats, setStats] = useState({});
   const [students, setStudents] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -21,28 +25,22 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
-    checkAuth();
     fetchData();
   }, []);
 
-  const checkAuth = () => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    
-    if (!token || !user) {
-      navigate('/login');
-      return;
+  useEffect(() => {
+    if (activeTab === 'students') {
+      fetchUsers();
+    } else if (activeTab === 'assignments') {
+      fetchAssignments();
+    } else if (activeTab === 'images') {
+      fetchData();
     }
-
-    const parsedUser = JSON.parse(user);
-    if (parsedUser.role !== 'admin') {
-      navigate('/');
-      return;
-    }
-  };
+  }, [activeTab]);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
       
       // Fetch stats
@@ -51,13 +49,6 @@ const AdminDashboard = () => {
       });
       const statsData = await statsResponse.json();
       if (statsData.success) setStats(statsData.stats);
-
-      // Fetch students
-      const usersResponse = await fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const usersData = await usersResponse.json();
-      if (usersData.success) setStudents(usersData.users.students);
 
       // Fetch assignments
       const assignmentsResponse = await fetch('/api/assignments', {
@@ -81,12 +72,40 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) setStudents(data.users.students);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    }
+  };
+
+  const fetchAssignments = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/assignments', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) setAssignments(data.assignments);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      toast.error('Failed to fetch assignments');
+    }
+  };
+
   const handleCreateAssignment = async (e) => {
     e.preventDefault();
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/assignments/create', {
+      const response = await fetch('/api/assignments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,7 +126,7 @@ const AdminDashboard = () => {
           due_date: '',
           max_images: 1
         });
-        fetchData(); // Refresh data
+        fetchAssignments(); // Refresh assignments
       } else {
         toast.error(data.message || 'Failed to create assignment');
       }
@@ -154,66 +173,126 @@ const AdminDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage students, assignments, and image submissions
-              </p>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-gray-900 text-white transition-all duration-300 flex flex-col`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            {sidebarOpen && (
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-lg font-bold">Admin Panel</span>
+              </div>
+            )}
             <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-1 rounded-md hover:bg-gray-700 transition-colors"
             >
-              Logout
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-      </header>
 
-      {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { id: 'overview', name: 'Overview', icon: Eye },
-              { id: 'students', name: 'Students', icon: Users },
-              { id: 'assignments', name: 'Assignments', icon: Plus },
-              { id: 'images', name: 'Images', icon: Image }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`${
-                  activeTab === tab.id
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.name}</span>
-              </button>
-            ))}
-          </nav>
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              activeTab === 'overview' 
+                ? 'bg-blue-600 text-white' 
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            {sidebarOpen && <span>Overview</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('students')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              activeTab === 'students' 
+                ? 'bg-blue-600 text-white' 
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            {sidebarOpen && <span>Students</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('assignments')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              activeTab === 'assignments' 
+                ? 'bg-blue-600 text-white' 
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-5 h-5" />
+            {sidebarOpen && <span>Assignments</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('images')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              activeTab === 'images' 
+                ? 'bg-blue-600 text-white' 
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+            }`}
+          >
+            <Image className="w-5 h-5" />
+            {sidebarOpen && <span>Images</span>}
+          </button>
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-gray-700">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          
+      <div className="flex-1 flex flex-col">
+        {/* Top Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {activeTab === 'overview' && 'Dashboard Overview'}
+                  {activeTab === 'students' && 'Student Management'}
+                  {activeTab === 'assignments' && 'Assignment Management'}
+                  {activeTab === 'images' && 'Image Management'}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {activeTab === 'overview' && 'Monitor system activity and statistics'}
+                  {activeTab === 'students' && 'Manage student accounts and information'}
+                  {activeTab === 'assignments' && 'Create and manage assignments'}
+                  {activeTab === 'images' && 'Review and manage image submissions'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-1 p-6">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -321,42 +400,31 @@ const AdminDashboard = () => {
           {activeTab === 'students' && (
             <div className="bg-white shadow rounded-lg">
               <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Student Management ({students.length} students)
-                </h3>
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Student Management</h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll Number</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {students.map((student) => (
                         <tr key={student.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{student.full_name}</div>
-                              <div className="text-sm text-gray-500">{student.email}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.roll_number}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.department || '-'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.year || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.full_name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.roll_number}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.department}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.year}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                               student.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}>
                               {student.is_active ? 'Active' : 'Inactive'}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(student.created_at).toLocaleDateString()}
                           </td>
                         </tr>
                       ))}
@@ -370,14 +438,11 @@ const AdminDashboard = () => {
           {/* Assignments Tab */}
           {activeTab === 'assignments' && (
             <div className="space-y-6">
-              {/* Create Assignment Button */}
               <div className="flex justify-between items-center">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Assignment Management ({assignments.length} assignments)
-                </h3>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Assignment Management</h3>
                 <button
                   onClick={() => setShowCreateAssignment(true)}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Assignment</span>
@@ -386,76 +451,74 @@ const AdminDashboard = () => {
 
               {/* Create Assignment Modal */}
               {showCreateAssignment && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                  <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                    <div className="mt-3">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Assignment</h3>
-                      <form onSubmit={handleCreateAssignment} className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Title</label>
-                          <input
-                            type="text"
-                            required
-                            value={assignmentForm.title}
-                            onChange={(e) => setAssignmentForm({...assignmentForm, title: e.target.value})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Description</label>
-                          <textarea
-                            value={assignmentForm.description}
-                            onChange={(e) => setAssignmentForm({...assignmentForm, description: e.target.value})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                            rows="3"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Instructions</label>
-                          <textarea
-                            value={assignmentForm.instructions}
-                            onChange={(e) => setAssignmentForm({...assignmentForm, instructions: e.target.value})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                            rows="3"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Due Date</label>
-                          <input
-                            type="datetime-local"
-                            value={assignmentForm.due_date}
-                            onChange={(e) => setAssignmentForm({...assignmentForm, due_date: e.target.value})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Max Images</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            value={assignmentForm.max_images}
-                            onChange={(e) => setAssignmentForm({...assignmentForm, max_images: parseInt(e.target.value)})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                          />
-                        </div>
-                        <div className="flex justify-end space-x-3">
-                          <button
-                            type="button"
-                            onClick={() => setShowCreateAssignment(false)}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-                          >
-                            Create
-                          </button>
-                        </div>
-                      </form>
-                    </div>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Assignment</h3>
+                    <form onSubmit={handleCreateAssignment} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Title</label>
+                        <input
+                          type="text"
+                          value={assignmentForm.title}
+                          onChange={(e) => setAssignmentForm({...assignmentForm, title: e.target.value})}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea
+                          value={assignmentForm.description}
+                          onChange={(e) => setAssignmentForm({...assignmentForm, description: e.target.value})}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                          rows="3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Instructions</label>
+                        <textarea
+                          value={assignmentForm.instructions}
+                          onChange={(e) => setAssignmentForm({...assignmentForm, instructions: e.target.value})}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                          rows="3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                        <input
+                          type="datetime-local"
+                          value={assignmentForm.due_date}
+                          onChange={(e) => setAssignmentForm({...assignmentForm, due_date: e.target.value})}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Max Images</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={assignmentForm.max_images}
+                          onChange={(e) => setAssignmentForm({...assignmentForm, max_images: parseInt(e.target.value)})}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateAssignment(false)}
+                          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          Create
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </div>
               )}
@@ -467,21 +530,24 @@ const AdminDashboard = () => {
                     {assignments.map((assignment) => (
                       <div key={assignment.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
+                          <div>
                             <h4 className="text-lg font-medium text-gray-900">{assignment.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
-                            <div className="mt-2 text-xs text-gray-500">
+                            <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                              <span>Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'No due date'}</span>
                               <span>Max Images: {assignment.max_images}</span>
-                              {assignment.due_date && (
-                                <span className="ml-4">Due: {new Date(assignment.due_date).toLocaleString()}</span>
-                              )}
+                              <span className={`px-2 py-1 rounded-full ${
+                                assignment.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {assignment.is_active ? 'Active' : 'Inactive'}
+                              </span>
                             </div>
                           </div>
                           <div className="flex space-x-2">
-                            <button className="text-indigo-600 hover:text-indigo-900">
+                            <button className="text-blue-600 hover:text-blue-800">
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-900">
+                            <button className="text-red-600 hover:text-red-800">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -563,8 +629,8 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
